@@ -11,12 +11,12 @@ input_file="tests/test_file.zip"
 
 
 class Result():
-    def __init__(self,x,y,framerate,bitrate,initial_padding,initial_size): #initial_padding is the poadding done for the bytes to be multiple of 3
+    def __init__(self,x,y,framerate,bitrate,initial_padding,initial_size,fps): #initial_padding is the poadding done for the bytes to be multiple of 3
         now = datetime.now()
         dt_string = now.strftime("%d-%m-%Y %H-%M-%S")
         self.dirname="results/"+dt_string+'/'
         os.mkdir(self.dirname)
-        self.video= cv2.VideoWriter(self.dirname+dt_string+".avi", cv2.VideoWriter_fourcc(*"MJPG"), 1, (x,y))
+        self.video= cv2.VideoWriter(self.dirname+dt_string+".avi", cv2.VideoWriter_fourcc(*"MJPG"), fps, (x,y))
         self.x=x
         self.y=y
         self.framerate=framerate
@@ -80,11 +80,11 @@ class Result():
     def add_parity_virtual_pixel(self,frame_number):
         
         num=frame_number%64
-        print(frame_number)
+        #print(frame_number)
         num=str(bin(num))[2:] #remove 0b from start
         num=(6-len(num))*"0"+num #pad for 6 bits
         rgb=[self.color_distr(int(num[0:2],2)),self.color_distr(int(num[2:4],2)),self.color_distr(int(num[4:],2))]
-        print(rgb)
+        #print(rgb)
         self.virtual_pixels.append(rgb)
         self.current_virtual_pixel+=1
         self.frames+=1
@@ -147,14 +147,18 @@ data.extend([0]*(3-len(data)%3)) #if not a multiple of 3 pad with zeros and incl
 data_combined_to_24_bits=list(zip(*[iter(data)]*3)) #group bytes in groups of 3 (24 bits, so they can be splitted to packets of 6 bits) in a tuple
 #print(min(data),max(data))
 
-final_video=Result(1280,720,60,500000,(3-len(data)%3),initial_size)
+final_video=Result(1280,720,60,500000,(3-len(data)%3),initial_size,5)
 
 t1=time.time()
 print("Starting transforming file with size " + str(initial_size) + " bytes")
+
+
 for packet_of_24_bits in data_combined_to_24_bits[0:]:
     #print("packet is: ",packet_of_24_bits)
     final_video.put_packet_in(packet_of_24_bits)
 final_video.pad()
+
+
 t2=time.time()
 print("finished after "+str(t2-t1)+ " seconds")
 print("median speed:"+str(int(initial_size/(t2-t1)))+ " bytes/second")
