@@ -1,11 +1,16 @@
 import cv2
 import os
 import numpy as np
+from datetime import datetime
 
 class Decoding():
-    def __init__(self,filename,output_filename,extension):
+    def __init__(self,filename,output_path,output_name,extension):
+        now = datetime.now()
+        dt_string = "File-Output "+now.strftime("%d-%m-%Y %H-%M-%S")+"/"
+        os.mkdir(output_path+dt_string)
+        self.output_path=output_path+dt_string
         self.ext=extension
-        self.output_filename=output_filename
+        self.output_filename=output_name
         _ = cv2.VideoCapture(filename)
         self.y = _.get(cv2.CAP_PROP_FRAME_HEIGHT)
         self.x = _.get(cv2.CAP_PROP_FRAME_WIDTH)
@@ -66,8 +71,9 @@ class Decoding():
             n=8
             chunks = [self.byte_buffer[i:i+n] for i in range(0, len(self.byte_buffer), n)]
             self.byte_buffer=""
-            print("writting to file...")
-            with open(self.output_filename+"."+self.ext,"ab") as output_file:
+            #print("writting to file...")
+            #print(self.output_path)
+            with open(self.output_path+self.output_filename+"."+self.ext,"ab") as output_file:
                 for byte in chunks:
                     temp=hex(int(byte,2))[2:].zfill(2)
                     #print(temp)
@@ -105,7 +111,8 @@ class Decoding():
 
 
 #main
-dec=Decoding("tests/in.avi","results/exported","zip")
+input_video="tests/exported.avi"
+dec=Decoding(input_video,"results/","exported","zip")
 while True:
     frame,status=dec.get_new_frame()
     if status!=False:

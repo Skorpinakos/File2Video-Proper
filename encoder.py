@@ -6,7 +6,7 @@ from datetime import datetime
 import os
 import time as time
 
-input_file="tests/test_file.zip"
+
 
 
 
@@ -14,9 +14,9 @@ class Result():
     def __init__(self,x,y,framerate,bitrate,initial_padding,initial_size,fps): #initial_padding is the poadding done for the bytes to be multiple of 3
         now = datetime.now()
         dt_string = now.strftime("%d-%m-%Y %H-%M-%S")
-        self.dirname="results/"+dt_string+'/'
+        self.dirname="results/Video-Output "+dt_string+'/'
         os.mkdir(self.dirname)
-        self.video= cv2.VideoWriter(self.dirname+dt_string+".avi", cv2.VideoWriter_fourcc(*"MJPG"), fps, (x,y))
+        self.video= cv2.VideoWriter(self.dirname+"exported"+".avi", cv2.VideoWriter_fourcc(*"MJPG"), fps, (x,y))
         self.x=x
         self.y=y
         self.framerate=framerate
@@ -127,6 +127,7 @@ class Result():
         #print("writting")
         cv2.imwrite(self.dirname+str(frame_number)+".png", frame)
         self.video.write(cv2.imread(self.dirname+str(frame_number)+".png"))
+        os.remove(self.dirname+str(frame_number)+".png")
         
             
 
@@ -167,8 +168,7 @@ def main(input_file):
 
 
 
-
-
+input_file="tests/exported.zip"
 main(input_file)
 exit()
 import cProfile
