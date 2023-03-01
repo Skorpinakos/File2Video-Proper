@@ -170,8 +170,8 @@ def main(input_file):
 
 
 input_file="tests/exported.zip"
-main(input_file)
-exit()
+#main(input_file)
+
 import cProfile
 import pstats
 with cProfile.Profile() as profile:
