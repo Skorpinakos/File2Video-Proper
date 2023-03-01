@@ -11,7 +11,7 @@ import time as time
 
 
 class Result():
-    def __init__(self,x,y,framerate,bitrate,initial_padding,initial_size,fps): #initial_padding is the poadding done for the bytes to be multiple of 3
+    def __init__(self,x,y,initial_padding,initial_size,fps): #initial_padding is the poadding done for the bytes to be multiple of 3
         now = datetime.now()
         dt_string = now.strftime("%d-%m-%Y %H-%M-%S")
         self.dirname="results/Video-Output "+dt_string+'/'
@@ -19,11 +19,11 @@ class Result():
         self.video= cv2.VideoWriter(self.dirname+"exported"+".avi", cv2.VideoWriter_fourcc(*"MJPG"), fps, (x,y))
         self.x=x
         self.y=y
-        self.framerate=framerate
+        
         self.virtual_pixels=[]
         self.frames=0
-        self.bitrate=bitrate
-        self.virtual_pixel_size=[8,8] #[x,y]
+        
+        self.virtual_pixel_size=[16,16] #[x,y]
         self.current_virtual_pixel=0
         self.initial_padding=initial_padding
         self.last_frame_padding=None
@@ -105,6 +105,7 @@ class Result():
 
         
     def craft_frame(self,frame_number):
+        print(frame_number)
         pixels=self.virtual_pixels.copy()
         self.virtual_pixels=[]
         row_size=int(self.x/self.virtual_pixel_size[0])
@@ -150,7 +151,7 @@ def get_data(filename):
 
 def main(input_file):
     data_combined_to_24_bits,initial_size,initial_padding=get_data(input_file)
-    final_video=Result(1280,720,60,500000,initial_padding,initial_size,12)
+    final_video=Result(1280,720,initial_padding,initial_size,6) #anything bellow 6 is turned to 6 by youtube
 
     t1=time.time()
     print("Starting transforming file with size " + str(initial_size) + " bytes")

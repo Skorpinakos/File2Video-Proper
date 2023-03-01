@@ -16,7 +16,7 @@ class Decoding():
         self.x = _.get(cv2.CAP_PROP_FRAME_WIDTH)
         self.cam = cv2.VideoCapture(filename)
         self.current_frame=-1
-        self.virtual_pixel_size=[8,8] #[x,y]
+        self.virtual_pixel_size=[16,16] #[x,y]
         self.virtual_pixels=[]
         self.current_virtual_pixel=0
         self.byte_buffer=""
@@ -42,7 +42,7 @@ class Decoding():
     def store_error_factor(self,diff_list):
         pass
     def quantize_color(self,color):
-        hidden_meaning=np.arange(0,4,1, dtype=int)*self.color_quantum #[0,85,170,255] for color quantum =85
+        hidden_meaning=np.arange(0,4,1, dtype=float)*self.color_quantum #[0,85,170,255] for color quantum =85
         #print(hidden_meaning)
         real_color=[]
         for value in color:
@@ -50,7 +50,13 @@ class Decoding():
             minimum=min(diffs)
             #print(hidden_meaning[np.where(diffs==minimum)])
             #print(value)
-            real_color.append(int(hidden_meaning[np.where(diffs==minimum)]))
+            val=hidden_meaning[np.where(diffs==minimum)]
+            if len(val)!=1:
+                print(val)
+                print(diffs)
+                val=val[0]
+                print("possible error")
+            real_color.append(int(val))
             self.store_error_factor(diffs)
         return np.array(real_color)
     def virtual_pixels_to_bytes(self,color):
@@ -89,12 +95,12 @@ class Decoding():
         first_vp=frame[0:self.virtual_pixel_size[0],0:self.virtual_pixel_size[1]]
         color_first_vp=first_vp.mean(axis=(0,1))
         real_color_first_vp=self.quantize_color(color_first_vp)
-        print("frame with parity vp:",real_color_first_vp)
+        #print("frame with parity vp:",real_color_first_vp)
 
         for virtual_pixel in range(1,self.virtual_pixels_per_frame): #first virtual pixel is parity
             start_x=int(self.virtual_pixel_size[0]*(virtual_pixel % (self.x/self.virtual_pixel_size[0])))
             start_y=int(self.virtual_pixel_size[1]*(virtual_pixel // (self.x/self.virtual_pixel_size[0])))
-            vp= frame[start_y:start_y+self.virtual_pixel_size[1],start_x:start_x+self.virtual_pixel_size[0]]
+            vp= frame[start_y+1:start_y+self.virtual_pixel_size[1]-1,start_x+1:start_x+self.virtual_pixel_size[0]-1]
             #cv2.imshow("image "+str(virtual_pixel),vp)
             #cv2.waitKey()
             color=vp.mean(axis=(0,1))
@@ -111,7 +117,7 @@ class Decoding():
 
 
 #main
-input_video="tests/exported.avi"
+input_video="tests/from_youtube.mp4"
 dec=Decoding(input_video,"results/","exported","zip")
 while True:
     frame,status=dec.get_new_frame()
