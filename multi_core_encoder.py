@@ -154,14 +154,17 @@ class Result():
         for kid in self.childs:
             kid.join()
         ###
-        self.previous_batch = sorted(os.listdir(self.dirname+'temp/'))
+        self.previous_batch = sorted(list(map( lambda s: int(s.replace(".png","")), os.listdir(self.dirname+'temp/') ))) #for sorting based on integer of 123.png rather than string (to avoid 118.png<27.png)
+
+
         self.transcode(self.previous_batch)
         
         self.video.release()
                 
     def transcode(self,batch):
         #print("transcoding the following:",batch)
-        for image in batch:
+        for img in batch:
+            image=str(img)+".png"
             self.video.write(cv2.imread(self.dirname+"temp/"+image))
             os.remove(self.dirname+"temp/"+image)
         print("transcoded the ",batch)
@@ -185,8 +188,11 @@ class Result():
                 for kid in self.childs:
                     kid.join() #wait for each process
                 self.childs=[] #clear process list
+            
+            
 
-            self.previous_batch = sorted(os.listdir(self.dirname+'temp/'))
+
+            self.previous_batch = sorted(list(map( lambda s: int(s.replace(".png","")), os.listdir(self.dirname+'temp/') ))) #for sorting based on integer of 123.png rather than string (to avoid 118.png<27.png)
             
 
 
