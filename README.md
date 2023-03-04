@@ -17,6 +17,6 @@ The from_youtube.mp4 is from https://youtu.be/xsKBArGZLgg, it is the exported.av
 
 Password for example .zip file given is "iot".
 
-Tested with Python 3.10.4 and with "opencv-python" & "numpy" installed (latest versions)
+**Tested with Python 3.10.4 and with "opencv-python" & "numpy" installed (latest versions)**
 
-Now with multiprocessing support for the encoder !
+**Now with multiprocessing support for the encoder !**
