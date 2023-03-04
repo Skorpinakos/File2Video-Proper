@@ -117,7 +117,7 @@ class Decoding():
 
 
 #main
-input_video="tests/from_youtube.mp4"
+input_video="tests/exported.avi"
 dec=Decoding(input_video,"results/","exported","zip")
 while True:
     frame,status=dec.get_new_frame()

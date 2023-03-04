@@ -1,21 +1,75 @@
-
+from multiprocessing import Process
 from pathlib import Path
 import numpy as np
 import cv2 as cv2
 from datetime import datetime
 import os
 import time as time
-from encoder_utils import fill_virtual_pixel,craft_frame,Context
+
+
+### Parallel Defs #####################################################################################################
+
+def fill_virtual_pixel(context,pixel_id):
+    rgb=context.pixels[pixel_id]
+    img=np.empty([context.virtual_pixel_size[0],context.virtual_pixel_size[1],3])
+    img[:,:,0] = np.full([context.virtual_pixel_size[0],context.virtual_pixel_size[1]],rgb[0])
+    img[:,:,1] = np.full([context.virtual_pixel_size[0],context.virtual_pixel_size[1]],rgb[1])
+    img[:,:,2] = np.full([context.virtual_pixel_size[0],context.virtual_pixel_size[1]],rgb[2])
+    return img
+
+
+def craft_frame(context,frame_number):
+    print("started crafting frame No",frame_number )
+    try:
+        
+        
+        row_size=int(context.x/context.virtual_pixel_size[0])
+        frame="empty"
+        for row in range(int(context.y/context.virtual_pixel_size[1])):
+            horizontal_line="empty"
+            for column in range(int(context.x/context.virtual_pixel_size[0])):
+                pixel_id=row*row_size+column
+                if type(horizontal_line)!=str:
+                    horizontal_line=np.hstack((horizontal_line,fill_virtual_pixel(context,pixel_id)))
+                else:
+                    horizontal_line=fill_virtual_pixel(context,pixel_id)
+
+
+            if type(frame) != str:
+                frame=np.vstack((frame,horizontal_line))
+            else:
+                frame=np.copy(horizontal_line)
+        #cv2.imshow("image", frame)
+        #cv2.waitKey()
+        #print("writting")
+        cv2.imwrite(context.dirname+"temp/"+str(frame_number)+".png", frame)
+        print("finished crafting frame No",frame_number )
+        #context.video.write(cv2.imread(context.dirname+str(frame_number)+".png"))
+        #os.remove(context.dirname+str(frame_number)+".png")
+    except Exception as e:
+        print(e)
 
 
 
-
+class Context(): #a packing class to pass context to parallel funcs
+    def __init__(self,pixels,x,y,vp_width,vp_height,dirname):
+        self.pixels=pixels.copy()
+        self.x=x
+        self.y=y
+        self.virtual_pixel_size=[vp_width,vp_height]
+        self.dirname=dirname
+################################################################################################################################
 class Result():
-    def __init__(self,x,y,initial_padding,initial_size,fps): #initial_padding is the poadding done for the bytes to be multiple of 3
+    def __init__(self,x,y,initial_padding,initial_size,fps,threads): #initial_padding is the poadding done for the bytes to be multiple of 3
+        self.threads=threads
         now = datetime.now()
         dt_string = now.strftime("%d-%m-%Y %H-%M-%S")
         self.dirname="results/Video-Output "+dt_string+'/'
-        os.mkdir(self.dirname)
+        try:
+            os.mkdir(self.dirname)
+            os.mkdir(self.dirname+"temp/")
+        except:
+            print("can't make dir, but maybe thats ok?")
         self.video= cv2.VideoWriter(self.dirname+"exported"+".avi", cv2.VideoWriter_fourcc(*"MJPG"), fps, (x,y))
         self.x=x
         self.y=y
@@ -33,6 +87,11 @@ class Result():
             print("x or y not a multiple of virtual pixel size, exiting...")
             exit(1)
         self.virtual_pixels_per_frame=int((self.x/self.virtual_pixel_size[0])*(self.y/self.virtual_pixel_size[1]))
+        self.childs=[]
+        self.previous_batch=[]
+    
+    def context_giver(self):
+        return Context(self.virtual_pixels,self.x,self.y,self.virtual_pixel_size[0],self.virtual_pixel_size[1],self.dirname)
 
     def color_distr(self,number):
         return number*self.color_quantum #take a number (e.g. between 1 and 4) and turn it to a distinct 0-255 level
@@ -81,24 +140,68 @@ class Result():
         self.frames+=1
     
 
-    def pad(self):
+    def finalize(self):
+        ### ending padding for final frame
         if len(self.virtual_pixels)==0:
             return
         to_pad=self.virtual_pixels_per_frame-len(self.virtual_pixels)
         for v_pixel in range(to_pad):
             self.create_virtual_pixel("000000")
+        ######
+
+        ### join parallels ###
+        self.transcode(self.previous_batch)
+        for kid in self.childs:
+            kid.join()
+        ###
+        self.previous_batch = sorted(os.listdir(self.dirname+'temp/'))
+        self.transcode(self.previous_batch)
+        
         self.video.release()
                 
+    def transcode(self,batch):
+        print("transcoding the following:",batch)
+        for image in batch:
+            self.video.write(cv2.imread(self.dirname+"temp/"+image))
+            os.remove(self.dirname+"temp/"+image)
+        print("transcoded the ",batch)
 
+
+    def context_giver(self):
+        return Context(self.virtual_pixels,self.x,self.y,self.virtual_pixel_size[0],self.virtual_pixel_size[1],self.dirname)
 
     def add_virtual_pixel(self,rgb):
         self.virtual_pixels.append(rgb)
         self.current_virtual_pixel+=1
         if self.current_virtual_pixel==self.virtual_pixels_per_frame:
+            context=self.context_giver() 
+            frame_number=self.frames
+
+            #Parallel magic
+
+            # check if already spawned enough processes to saturate cpu and if so wait for them and start video transcoding the previous ones
+            if (len(self.childs)>=self.threads):
+                self.transcode(self.previous_batch)
+                for kid in self.childs:
+                    kid.join() #wait for each process
+            self.childs=[] #clear process list
+
+            self.previous_batch = sorted(os.listdir(self.dirname+'temp/'))
+            
+
+
+            arguements=(context,frame_number)
+            p=Process(target=craft_frame,args=arguements)
+            p.start()
+            self.childs.append(p)
+
+
+
             self.current_virtual_pixel=0
             #self.craft_frame(self.frames,pixels) #using https://docs.python.org/3/library/multiprocessing.html for windows
             self.virtual_pixels=[]
-            
+
+            #THIS IS FUCKING COOL https://stackoverflow.com/questions/59070175/pass-arguments-through-self-in-class-instance-while-multiprocessing-in-python 
 
 
         
@@ -123,7 +226,7 @@ def get_data(filename):
 
 def main(input_file):
     data_combined_to_24_bits,initial_size,initial_padding=get_data(input_file)
-    final_video=Result(1280,720,initial_padding,initial_size,6) #anything bellow 6 is turned to 6 by youtube
+    final_video=Result(1280,720,initial_padding,initial_size,1,4) #anything bellow 6 fps is turned to 6 by youtube
 
     t1=time.time()
     print("Starting transforming file with size " + str(initial_size) + " bytes")
@@ -132,7 +235,7 @@ def main(input_file):
     for packet_of_24_bits in data_combined_to_24_bits[0:]:
         #print("packet is: ",packet_of_24_bits)
         final_video.put_packet_in(packet_of_24_bits)
-    final_video.pad()
+    final_video.finalize()
 
 
     t2=time.time()
@@ -141,14 +244,7 @@ def main(input_file):
 
 
 
-input_file="tests/exported.zip"
-#main(input_file)
-
-import cProfile
-import pstats
-with cProfile.Profile() as profile:
+input_file="tests/test.zip"
+if __name__ == '__main__': #in the god you believe in https://stackoverflow.com/questions/18204782/runtimeerror-on-windows-trying-python-multiprocessing
     main(input_file)
-
-results=pstats.Stats(profile)
-results.sort_stats(pstats.SortKey.TIME)
-results.print_stats()
+    
