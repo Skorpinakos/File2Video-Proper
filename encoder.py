@@ -66,12 +66,6 @@ class Result():
         else:
             self.add_virtual_pixel(rgb) #rgb is [r,g,b]
         #print(rgb)
-    def add_virtual_pixel(self,rgb):
-        self.virtual_pixels.append(rgb)
-        self.current_virtual_pixel+=1
-        if self.current_virtual_pixel==self.virtual_pixels_per_frame:
-            self.current_virtual_pixel=0
-            self.craft_frame(self.frames)
 
             
     def add_parity_virtual_pixel(self,frame_number):
@@ -103,11 +97,17 @@ class Result():
                 
 
 
-        
-    def craft_frame(self,frame_number):
+    def add_virtual_pixel(self,rgb):
+        self.virtual_pixels.append(rgb)
+        self.current_virtual_pixel+=1
+        if self.current_virtual_pixel==self.virtual_pixels_per_frame:
+            self.current_virtual_pixel=0
+            pixels=self.virtual_pixels.copy()
+            self.virtual_pixels=[]
+            self.craft_frame(self.frames,pixels) #using https://docs.python.org/3/library/multiprocessing.html for windows
+
+    def craft_frame(self,frame_number,pixels):
         print(frame_number)
-        pixels=self.virtual_pixels.copy()
-        self.virtual_pixels=[]
         row_size=int(self.x/self.virtual_pixel_size[0])
         frame="empty"
         for row in range(int(self.y/self.virtual_pixel_size[1])):
@@ -127,8 +127,8 @@ class Result():
         #cv2.waitKey()
         #print("writting")
         cv2.imwrite(self.dirname+str(frame_number)+".png", frame)
-        self.video.write(cv2.imread(self.dirname+str(frame_number)+".png"))
-        os.remove(self.dirname+str(frame_number)+".png")
+        #self.video.write(cv2.imread(self.dirname+str(frame_number)+".png"))
+        #os.remove(self.dirname+str(frame_number)+".png")
         
             
 
