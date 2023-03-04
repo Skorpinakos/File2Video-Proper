@@ -5,7 +5,7 @@ import cv2 as cv2
 from datetime import datetime
 import os
 import time as time
-
+from encoder_utils import fill_virtual_pixel,craft_frame,Context
 
 
 
@@ -80,13 +80,7 @@ class Result():
         self.current_virtual_pixel+=1
         self.frames+=1
     
-    def fill_virtual_pixel(self,rgb):
-        #print(rgb)
-        img=np.empty([self.virtual_pixel_size[0],self.virtual_pixel_size[1],3])
-        img[:,:,0] = np.full([self.virtual_pixel_size[0],self.virtual_pixel_size[1]],rgb[0])
-        img[:,:,1] = np.full([self.virtual_pixel_size[0],self.virtual_pixel_size[1]],rgb[1])
-        img[:,:,2] = np.full([self.virtual_pixel_size[0],self.virtual_pixel_size[1]],rgb[2])
-        return img
+
     def pad(self):
         if len(self.virtual_pixels)==0:
             return
@@ -102,33 +96,11 @@ class Result():
         self.current_virtual_pixel+=1
         if self.current_virtual_pixel==self.virtual_pixels_per_frame:
             self.current_virtual_pixel=0
-            pixels=self.virtual_pixels.copy()
+            #self.craft_frame(self.frames,pixels) #using https://docs.python.org/3/library/multiprocessing.html for windows
             self.virtual_pixels=[]
-            self.craft_frame(self.frames,pixels) #using https://docs.python.org/3/library/multiprocessing.html for windows
-
-    def craft_frame(self,frame_number,pixels):
-        print(frame_number)
-        row_size=int(self.x/self.virtual_pixel_size[0])
-        frame="empty"
-        for row in range(int(self.y/self.virtual_pixel_size[1])):
-            horizontal_line="empty"
-            for column in range(int(self.x/self.virtual_pixel_size[0])):
-                if type(horizontal_line)!=str:
-                    horizontal_line=np.hstack((horizontal_line,self.fill_virtual_pixel(pixels[row*row_size+column])))
-                else:
-                    horizontal_line=self.fill_virtual_pixel(pixels[row*row_size+column])
+            
 
 
-            if type(frame) != str:
-                frame=np.vstack((frame,horizontal_line))
-            else:
-                frame=np.copy(horizontal_line)
-        #cv2.imshow("image", frame)
-        #cv2.waitKey()
-        #print("writting")
-        cv2.imwrite(self.dirname+str(frame_number)+".png", frame)
-        #self.video.write(cv2.imread(self.dirname+str(frame_number)+".png"))
-        #os.remove(self.dirname+str(frame_number)+".png")
         
             
 
