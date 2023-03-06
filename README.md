@@ -19,4 +19,4 @@ Password for example .zip file given is "lorem".
 
 **Now with efficient & scalable multiprocessing support for the encoder !**
 
-**Youtube Safe**
+**Youtube Safe, video2file ratio is around 10** (after converting to .webm manually or through youtube)
