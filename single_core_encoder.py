@@ -134,29 +134,34 @@ class Result():
                          
 
         
+def bytes_from_file(filename, chunksize=3): #from https://stackoverflow.com/a/1035456 with minor modifications
+    with open(filename, "rb") as f:
+        while True:
+            chunk = f.read(chunksize)
+            if len(chunk)==chunksize:
+                yield tuple(chunk)
+            else:
+                chunk=list(chunk)
+                chunk.extend([0]*((chunksize)-len(chunk)))
+                yield tuple(chunk)
+                break
 
 
         
 
-def get_data(filename):
-    data = list(Path(filename).read_bytes())
-    initial_size=len(data) #data is a list of 8 bit integers (0 to 255)
-    data.extend([0]*(3-len(data)%3)) #if not a multiple of 3 pad with zeros and include the information on the Result class
-
-    data_combined_to_24_bits=list(zip(*[iter(data)]*3)) #group bytes in groups of 3 (24 bits, so they can be splitted to packets of 6 bits) in a tuple
-    #print(min(data),max(data))
-    initial_padding=(3-len(data)%3)
-    return data_combined_to_24_bits,initial_size,initial_padding
 
 def main(input_file):
-    data_combined_to_24_bits,initial_size,initial_padding=get_data(input_file)
+    #data_combined_to_24_bits,initial_size,initial_padding=get_data(input_file)
+    chunk_size=3
+    initial_size=os.stat(input_file).st_size
+    initial_padding=chunk_size-(initial_size % chunk_size)
     final_video=Result(3840,2160,initial_padding,initial_size,6) #anything bellow 6 is turned to 6 by youtube
 
     t1=time.time()
     print("Starting transforming file with size " + str(initial_size) + " bytes")
 
 
-    for packet_of_24_bits in data_combined_to_24_bits[0:]:
+    for packet_of_24_bits in bytes_from_file(input_file,chunksize=chunk_size):
         #print("packet is: ",packet_of_24_bits)
         final_video.put_packet_in(packet_of_24_bits)
     final_video.pad()
