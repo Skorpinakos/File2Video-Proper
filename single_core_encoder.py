@@ -87,7 +87,7 @@ class Result():
     
     def fill_virtual_pixel(self,rgb):
         #print(rgb)
-        img=np.empty([self.virtual_pixel_size[0],self.virtual_pixel_size[1],3])
+        img=np.empty([self.virtual_pixel_size[0],self.virtual_pixel_size[1],3],dtype=np.int8)
         img[:,:,0] = np.full([self.virtual_pixel_size[0],self.virtual_pixel_size[1]],rgb[0])
         img[:,:,1] = np.full([self.virtual_pixel_size[0],self.virtual_pixel_size[1]],rgb[1])
         img[:,:,2] = np.full([self.virtual_pixel_size[0],self.virtual_pixel_size[1]],rgb[2])
@@ -125,9 +125,9 @@ class Result():
         #cv2.imshow("image", frame)
         #cv2.waitKey()
         #print("writting")
-        cv2.imwrite(self.dirname+str(frame_number)+".png", frame)
-        self.video.write(cv2.imread(self.dirname+str(frame_number)+".png"))
-        os.remove(self.dirname+str(frame_number)+".png")
+        #cv2.imwrite(self.dirname+str(frame_number)+".png", frame)
+        self.video.write(frame)
+        #os.remove(self.dirname+str(frame_number)+".png")
         
             
 
