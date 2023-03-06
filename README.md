@@ -12,7 +12,6 @@ Results are placed in 'results' folder.
 Example inputs are in 'tests' folder.
 
 
-
 Password for example .zip file given is "lorem".
 
 **Tested with Python 3.10.4 and with "opencv-python" & "numpy" installed (latest versions)**
