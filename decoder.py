@@ -117,7 +117,7 @@ class Decoding():
 
 
 #main
-input_video="tests/downloaded from youtube.webm"
+input_video="tests/exported.avi"
 dec=Decoding(input_video,"results/","exported","zip")
 while True:
     frame,status=dec.get_new_frame()
