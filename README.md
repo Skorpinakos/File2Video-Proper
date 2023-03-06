@@ -17,6 +17,6 @@ Password for example .zip file given is "lorem".
 
 **Tested with Python 3.10.4 and with "opencv-python" & "numpy" installed (latest versions)**
 
-**Now with efficient multiprocessing support for the encoder !**
+**Now with efficient & scalable multiprocessing support for the encoder !**
 
 **Youtube Safe**
