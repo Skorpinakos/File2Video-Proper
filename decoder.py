@@ -16,7 +16,7 @@ class Decoding():
         self.x = _.get(cv2.CAP_PROP_FRAME_WIDTH)
         self.cam = cv2.VideoCapture(filename)
         self.current_frame=-1
-        self.virtual_pixel_size=[16,16] #[x,y]
+        self.virtual_pixel_size=[12,12] #[x,y]
         self.virtual_pixels=[]
         self.current_virtual_pixel=0
         self.byte_buffer=""
@@ -117,7 +117,7 @@ class Decoding():
 
 
 #main
-input_video="tests/exported.avi"
+input_video="tests/downloaded from youtube.webm"
 dec=Decoding(input_video,"results/","exported","zip")
 while True:
     frame,status=dec.get_new_frame()

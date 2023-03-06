@@ -86,7 +86,7 @@ class Result():
         self.virtual_pixels=[]
         self.frames=0
         
-        self.virtual_pixel_size=[16,16] #[x,y]
+        self.virtual_pixel_size=[12,12] #[x,y]
         self.current_virtual_pixel=0
         self.initial_padding=initial_padding
         self.last_frame_padding=None
@@ -269,7 +269,7 @@ def get_data(filename):
 
 def main(input_file):
     data_combined_to_24_bits,initial_size,initial_padding=get_data(input_file)
-    final_video=Result(1280,720,initial_padding,initial_size,6,12) #anything bellow 6 fps is turned to 6 by youtube
+    final_video=Result(3840,2160,initial_padding,initial_size,6,12) #anything bellow 6 fps is turned to 6 by youtube
 
     t1=time.time()
     print("Starting transforming file with size " + str(initial_size) + " bytes")
@@ -287,7 +287,7 @@ def main(input_file):
 
 
 
-input_file="tests/exported.zip"
+input_file="tests/test_input.zip"
 if __name__ == '__main__': #in the god you believe in https://stackoverflow.com/questions/18204782/runtimeerror-on-windows-trying-python-multiprocessing
     main(input_file)
     
