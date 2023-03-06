@@ -5,20 +5,21 @@ import cv2 as cv2
 from datetime import datetime
 import os
 import time as time
+import multiprocessing as mp
 
 
 ### Parallel Defs #####################################################################################################
 
 def fill_virtual_pixel(context,pixel_id):
     rgb=context.pixels[pixel_id]
-    img=np.empty([context.virtual_pixel_size[0],context.virtual_pixel_size[1],3])
+    img=np.empty([context.virtual_pixel_size[0],context.virtual_pixel_size[1],3],dtype=np.int8)
     img[:,:,0] = np.full([context.virtual_pixel_size[0],context.virtual_pixel_size[1]],rgb[0])
     img[:,:,1] = np.full([context.virtual_pixel_size[0],context.virtual_pixel_size[1]],rgb[1])
     img[:,:,2] = np.full([context.virtual_pixel_size[0],context.virtual_pixel_size[1]],rgb[2])
     return img
 
 
-def craft_frame(context,frame_number):
+def craft_frame(context,frame_number,mp_var):
     #print("started crafting frame No",frame_number )
     try:
         
@@ -42,7 +43,15 @@ def craft_frame(context,frame_number):
         #cv2.imshow("image", frame)
         #cv2.waitKey()
         #print("writting")
-        cv2.imwrite(context.dirname+"temp/"+str(frame_number)+".png", frame)
+        #cv2.imwrite(context.dirname+"temp/"+str(frame_number)+".png", frame)
+        #print(cv2.imread(context.dirname+"temp/"+str(frame_number)+".png"))
+        
+        var = np.reshape( np.frombuffer( mp_var, dtype=np.int8 ), (context.y,context.x,3) )
+        np.copyto(var, frame, casting='same_kind') #IMPORTANT! YOU NEED COPY_TO SO THE VAR POINTER DOESNT CHANGE SO THE PARENT CAN STILL HAVE ACCESS (DONT USE NP.COPY())
+        #print(var)
+        #print(var)
+        #print(type(var),type(frame))
+        #print(var)
         #print("finished crafting frame No",frame_number )
         #context.video.write(cv2.imread(context.dirname+str(frame_number)+".png"))
         #os.remove(context.dirname+str(frame_number)+".png")
@@ -89,6 +98,8 @@ class Result():
         self.virtual_pixels_per_frame=int((self.x/self.virtual_pixel_size[0])*(self.y/self.virtual_pixel_size[1]))
         self.childs=[]
         self.previous_batch=[]
+        self.shared_vars=[]
+        self.transcoded_frame_count=0
     
     def context_giver(self):
         return Context(self.virtual_pixels,self.x,self.y,self.virtual_pixel_size[0],self.virtual_pixel_size[1],self.dirname)
@@ -153,30 +164,45 @@ class Result():
         self.transcode(self.previous_batch)
         for kid in self.childs:
             kid.join()
+            frame=self.retrieve_frame(self.shared_vars.pop(0))
+            self.previous_batch.append(frame)
         ###
-        self.previous_batch = sorted(list(map( lambda s: int(s.replace(".png","")), os.listdir(self.dirname+'temp/') ))) #for sorting based on integer of 123.png rather than string (to avoid 118.png<27.png)
+        #self.previous_batch = sorted(list(map( lambda s: int(s.replace(".png","")), os.listdir(self.dirname+'temp/') ))) #for sorting based on integer of 123.png rather than string (to avoid 118.png<27.png)
 
 
         self.transcode(self.previous_batch)
         
+        
         self.video.release()
                 
     def transcode(self,batch):
-        #print("transcoding the following:",batch)
+        #print("batch length:",len(batch))
+        
+        
         for img in batch:
-            image=str(img)+".png"
-            self.video.write(cv2.imread(self.dirname+"temp/"+image))
-            os.remove(self.dirname+"temp/"+image)
-        print("transcoded the ",batch)
+            #print(img)
+            #exit()
+            #image=str(img)+".png"
+            self.video.write(img)
+            #os.remove(self.dirname+"temp/"+image)
+        self.previous_batch=[]
+        self.transcoded_frame_count+=len(batch)
+        print("transcoded "+ str(self.transcoded_frame_count)+" frames so far")
 
 
     def context_giver(self):
         return Context(self.virtual_pixels,self.x,self.y,self.virtual_pixel_size[0],self.virtual_pixel_size[1],self.dirname)
+    def retrieve_frame(self,shared_frame):
+        var = np.reshape( np.frombuffer( shared_frame, dtype=np.int8 ), (self.y,self.x,3) )
+        return var
 
     def add_virtual_pixel(self,rgb):
+        
         self.virtual_pixels.append(rgb)
         self.current_virtual_pixel+=1
         if self.current_virtual_pixel==self.virtual_pixels_per_frame:
+            #print()
+            #print(self.frames,len(self.shared_vars))
             context=self.context_giver() 
             frame_number=self.frames
 
@@ -185,20 +211,31 @@ class Result():
             # check if already spawned enough processes to saturate cpu and if so wait for them and start video transcoding the previous ones
             if (len(self.childs)>=self.threads):
                 self.transcode(self.previous_batch)
+                #transcode self.shared_vars
                 for kid in self.childs:
                     kid.join() #wait for each process
+                    frame=self.retrieve_frame(self.shared_vars.pop(0))
+                    self.previous_batch.append(frame)
                 self.childs=[] #clear process list
-            
-            
+                
+                #self.previous_batch = sorted(list(map( lambda s: int(s.replace(".png","")), os.listdir(self.dirname+'temp/') ))) #for sorting based on integer of 123.png rather than string (to avoid 118.png<27.png)
 
 
-            self.previous_batch = sorted(list(map( lambda s: int(s.replace(".png","")), os.listdir(self.dirname+'temp/') ))) #for sorting based on integer of 123.png rather than string (to avoid 118.png<27.png)
-            
+            n_elements = self.x*self.y*3//4 # how many elements your numpy should have I DON'T KNOW WHY I HAVE TO ADD THE *2 AT THE END ????? it was because of float64 instead of int32....
+            #print(n_elements)
+            #buffer that contains the memory
+            mp_var = mp.RawArray( 'i', n_elements )
+            arguements=(context,frame_number,mp_var)
+            self.shared_vars.append(mp_var)
 
-
-            arguements=(context,frame_number)
             p=Process(target=craft_frame,args=arguements)
             p.start()
+            #p.join()
+            #print(mp_var)
+            #exit()
+            #var=self.retrieve_frame(mp_var)
+            #print(var)
+            #exit()
             self.childs.append(p)
 
 
