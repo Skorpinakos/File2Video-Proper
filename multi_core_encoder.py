@@ -69,7 +69,7 @@ class Context(): #a packing class to pass context to parallel funcs
         self.dirname=dirname
 ################################################################################################################################
 class Result():
-    def __init__(self,x,y,initial_padding,initial_size,fps,threads): #initial_padding is the poadding done for the bytes to be multiple of 3
+    def __init__(self,x,y,fps,initial_padding,initial_size,threads,batch_size): #initial_padding is the poadding done for the bytes to be multiple of 3
         self.threads=threads
         now = datetime.now()
         dt_string = now.strftime("%d-%m-%Y %H-%M-%S")
@@ -100,6 +100,7 @@ class Result():
         self.previous_batch=[]
         self.shared_vars=[]
         self.transcoded_frame_count=0
+        self.batch_size=batch_size
     
     def context_giver(self):
         return Context(self.virtual_pixels,self.x,self.y,self.virtual_pixel_size[0],self.virtual_pixel_size[1],self.dirname)
@@ -109,21 +110,13 @@ class Result():
     def safe(self,string):
         return string.zfill(8)
         
-    def put_packet_in(self,packet):
-        packet_str=self.safe(bin(packet[0])[2:])+self.safe(bin(packet[1])[2:])+self.safe(bin(packet[2])[2:])
-        #print((packet_str))
-        #print(packet)
+    def put_byte_batch_in(self,batch):
+
         
         if len(packet_str)!=24:
             print("error")
             exit()
-        packet_1=packet_str[0:6]
-        packet_2=packet_str[6:12]
-        packet_3=packet_str[12:18]
-        packet_4=packet_str[18:24]
-        self.create_virtual_pixel(packet_1)
-        self.create_virtual_pixel(packet_2)
-        self.create_virtual_pixel(packet_3)
+
         self.create_virtual_pixel(packet_4)
         
     def create_virtual_pixel(self,color):
@@ -275,7 +268,8 @@ def main(input_file):
     initial_size=os.stat(input_file).st_size
     initial_padding=chunk_size-(initial_size % chunk_size)
 
-    final_video=Result(3840,2160,initial_padding,initial_size,6,12) #anything bellow 6 fps is turned to 6 by youtube
+    final_video=Result(3840,2160,6,initial_padding,initial_size,12) #anything bellow 6 fps is turned to 6 by youtube
+    #args are x dimension of final video | y dimension of final video | fps of final video | file padding so it is multiple of batch_size (byte_size*chunk_size e.g. 8*3)|original file size | thread count to spawn
 
     t1=time.time()
     print("Starting transforming file with size " + str(initial_size) + " bytes")
@@ -283,7 +277,7 @@ def main(input_file):
 
     for packet in bytes_from_file(input_file,chunksize=chunk_size):
         #print("packet is: ",packet_of_24_bits)
-        final_video.put_packet_in(packet)
+        final_video.put_byte_batch_in(packet)
     final_video.finalize()
 
 
