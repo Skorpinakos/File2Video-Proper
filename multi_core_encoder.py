@@ -106,15 +106,17 @@ class Result():
     
     def context_giver(self):
         return Context(self.virtual_pixels,self.x,self.y,self.virtual_pixel_size[0],self.virtual_pixel_size[1],self.dirname)
+    def packet_to_str(self,packet):
+        return f'{packet:b}'.zfill(8)
 
     def put_byte_batch_in(self,batch):
 
         #print(batch)
-        if len(batch)!=self.batch_size//8: 
-            print("during putting byte batch in: error, not correct batch size")
-            exit()
+        #if len(batch)!=self.batch_size//8: 
+            #print("during putting byte batch in: error, not correct batch size")
+            #exit()
 
-        packets_unified="".join(tuple(map(lambda x: f'{x:b}'.zfill(8),batch))) #for each byte , convert to string without leadin '0b' prefix and with 8 bit zero leading padding (methods have been performance tested here https://github.com/Skorpinakos/benchmark-01 compared to methods from https://stackoverflow.com/questions/37377982/remove-the-0b-in-binary & https://stackoverflow.com/questions/16926130/convert-to-binary-and-keep-leading-zeros  )
+        packets_unified="".join(tuple(map(self.packet_to_str ,batch))) #for each byte , convert to string without leadin '0b' prefix and with 8 bit zero leading padding (methods have been performance tested here https://github.com/Skorpinakos/benchmark-01 compared to methods from https://stackoverflow.com/questions/37377982/remove-the-0b-in-binary & https://stackoverflow.com/questions/16926130/convert-to-binary-and-keep-leading-zeros  )
                                                                                #use map to apply to whole list efficiently and join all to unified string
         #print(packets_unified)
         for indx in range(0,self.batch_size,self.bits_per_virtual_pixel):
@@ -266,7 +268,7 @@ def bytes_from_file(filename, chunksize=3): #from https://stackoverflow.com/a/10
 
 def main(input_file):
     #data_combined_to_24_bits,initial_size,initial_padding=get_data(input_file)
-    chunk_size=99 #chunk_size*8 must be multiple of 6
+    chunk_size=240 #bytes #chunk_size*8 must be multiple of 6
     initial_size=os.stat(input_file).st_size
     initial_padding=chunk_size-(initial_size % chunk_size)
 
