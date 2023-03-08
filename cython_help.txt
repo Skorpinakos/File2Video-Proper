@@ -1,1 +1,3 @@
 compile with'python setup.py build_ext'
+then place the .pyd from the build folder to working dir
+if you dont want to run using the cython extension then change in the multi_core_encoder.py the 2 instances of 'fill_virtual_pixel_cython' function to 'fill_virtual_pixel_python' inside the 'craft_frame' function. 
