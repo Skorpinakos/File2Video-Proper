@@ -86,14 +86,14 @@ class Result():
         self.virtual_pixels=[]
         self.frames=0
         
-        self.virtual_pixel_size=[12,12] #[x,y]
+        self.virtual_pixel_size=[12,12] #[x,y] this is the smallest virtual pixel size that survives video compression and is also a divider of most working video resolutions (no per-frame padding)
         self.current_virtual_pixel=0
         self.initial_padding=initial_padding
         self.last_frame_padding=None
         self.size=initial_size
         self.color_quantum=85
         if (self.x % self.virtual_pixel_size[0])!=0 or (self.y % self.virtual_pixel_size[0])!=0:
-            print("x or y not a multiple of virtual pixel size, exiting...")
+            print("during init: x (width) or y (height) not a multiple of virtual pixel size, exiting...")
             exit(1)
         self.virtual_pixels_per_frame=int((self.x/self.virtual_pixel_size[0])*(self.y/self.virtual_pixel_size[1]))
         self.childs=[]
@@ -101,28 +101,30 @@ class Result():
         self.shared_vars=[]
         self.transcoded_frame_count=0
         self.batch_size=batch_size
+        self.bits_per_virtual_pixel=6 ### that "6" is fundamental to the current architecture as it represents how many bits are encoded per virtual pixel (2 per color channel so 4 levels of intensity per color [0,85,170,255])
+  
     
     def context_giver(self):
         return Context(self.virtual_pixels,self.x,self.y,self.virtual_pixel_size[0],self.virtual_pixel_size[1],self.dirname)
 
-    def color_distr(self,number):
-        return number*self.color_quantum #take a number (e.g. between 1 and 4) and turn it to a distinct 0-255 level
-    def safe(self,string):
-        return string.zfill(8)
-        
     def put_byte_batch_in(self,batch):
 
-        
-        if len(packet_str)!=24:
-            print("error")
+        #print(batch)
+        if len(batch)!=self.batch_size//8: 
+            print("during putting byte batch in: error, not correct batch size")
             exit()
 
-        self.create_virtual_pixel(packet_4)
+        packets_unified="".join(tuple(map(lambda x: f'{x:b}'.zfill(8),batch))) #for each byte , convert to string without leadin '0b' prefix and with 8 bit zero leading padding (methods have been performance tested here https://github.com/Skorpinakos/benchmark-01 compared to methods from https://stackoverflow.com/questions/37377982/remove-the-0b-in-binary & https://stackoverflow.com/questions/16926130/convert-to-binary-and-keep-leading-zeros  )
+                                                                               #use map to apply to whole list efficiently and join all to unified string
+        #print(packets_unified)
+        for indx in range(0,self.batch_size,self.bits_per_virtual_pixel):
+            color=packets_unified[indx:indx+self.bits_per_virtual_pixel]
+            self.create_virtual_pixel(color)
         
     def create_virtual_pixel(self,color):
         #print(color)
-        rgb=[self.color_distr(int(self.safe(color[0:2]),2)),self.color_distr(int(self.safe(color[2:4]),2)),self.color_distr(int(self.safe(color[4:]),2))]
-        #print(rgb)
+        rgb=[int(color[0:2],2)*self.color_quantum,int(color[2:4],2)*self.color_quantum,int(color[4:6],2)*self.color_quantum]
+    
         if self.current_virtual_pixel==0:
             self.add_parity_virtual_pixel(self.frames)
             self.add_virtual_pixel(rgb) #rgb is [r,g,b]
@@ -132,12 +134,11 @@ class Result():
 
             
     def add_parity_virtual_pixel(self,frame_number):
-        
+        ###Encodes frame number to the first virtual pixel 
         num=frame_number%64
         #print(frame_number)
-        num=str(bin(num))[2:] #remove 0b from start
-        num=(6-len(num))*"0"+num #pad for 6 bits
-        rgb=[self.color_distr(int(num[0:2],2)),self.color_distr(int(num[2:4],2)),self.color_distr(int(num[4:],2))]
+        color=f'{num:b}'.zfill(6)
+        rgb=[int(color[0:2],2)*self.color_quantum,int(color[2:4],2)*self.color_quantum,int(color[4:6],2)*self.color_quantum]
         #print(rgb)
         self.virtual_pixels.append(rgb)
         self.current_virtual_pixel+=1
@@ -150,7 +151,7 @@ class Result():
             return
         to_pad=self.virtual_pixels_per_frame-len(self.virtual_pixels)
         for v_pixel in range(to_pad):
-            self.create_virtual_pixel("000000")
+            self.create_virtual_pixel("000000")  ### add dummy pixels to fill last frame
         ######
 
         ### join parallels ###
@@ -190,6 +191,7 @@ class Result():
         return var
 
     def add_virtual_pixel(self,rgb):
+        #print(rgb)
         
         self.virtual_pixels.append(rgb)
         self.current_virtual_pixel+=1
@@ -264,11 +266,11 @@ def bytes_from_file(filename, chunksize=3): #from https://stackoverflow.com/a/10
 
 def main(input_file):
     #data_combined_to_24_bits,initial_size,initial_padding=get_data(input_file)
-    chunk_size=3
+    chunk_size=99 #chunk_size*8 must be multiple of 6
     initial_size=os.stat(input_file).st_size
     initial_padding=chunk_size-(initial_size % chunk_size)
 
-    final_video=Result(3840,2160,6,initial_padding,initial_size,12) #anything bellow 6 fps is turned to 6 by youtube
+    final_video=Result(3840,2160,6,initial_padding,initial_size,12,chunk_size*8) #anything bellow 6 fps is turned to 6 by youtube
     #args are x dimension of final video | y dimension of final video | fps of final video | file padding so it is multiple of batch_size (byte_size*chunk_size e.g. 8*3)|original file size | thread count to spawn
 
     t1=time.time()
