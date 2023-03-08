@@ -20,3 +20,6 @@ Password for example .zip file given is "lorem".
 **Now with efficient & scalable multiprocessing support for the encoder !**
 
 **Youtube Safe, video2file ratio is around 10** (after converting to .webm manually or through youtube)
+
+
+**single_core_encoder.py will not be supported after 7/2/2022**
