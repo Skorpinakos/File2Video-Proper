@@ -10,12 +10,12 @@ import multiprocessing as mp
 
 ### Parallel Defs #####################################################################################################
 
-def fill_virtual_pixel(context,pixel_id):
-    rgb=context.pixels[pixel_id]
-    img=np.empty([context.virtual_pixel_size[0],context.virtual_pixel_size[1],3],dtype=np.int8)
-    img[:,:,0] = np.full([context.virtual_pixel_size[0],context.virtual_pixel_size[1]],rgb[0])
-    img[:,:,1] = np.full([context.virtual_pixel_size[0],context.virtual_pixel_size[1]],rgb[1])
-    img[:,:,2] = np.full([context.virtual_pixel_size[0],context.virtual_pixel_size[1]],rgb[2])
+def fill_virtual_pixel(vp_width,vp_height,rgb):
+    
+    img=np.empty([vp_width,vp_height,3],dtype=np.int8)
+    img[:,:,0] = np.full((vp_width,vp_height),rgb[0])
+    img[:,:,1] = np.full((vp_width,vp_height),rgb[1])
+    img[:,:,2] = np.full((vp_width,vp_height),rgb[2])
     return img
 
 
@@ -30,10 +30,12 @@ def craft_frame(context,frame_number,mp_var):
             horizontal_line="empty"
             for column in range(int(context.x/context.virtual_pixel_size[0])):
                 pixel_id=row*row_size+column
+                rgb=context.pixels[pixel_id]
+                vp_width,vp_height=context.virtual_pixel_size
                 if type(horizontal_line)!=str:
-                    horizontal_line=np.hstack((horizontal_line,fill_virtual_pixel(context,pixel_id)))
+                    horizontal_line=np.hstack((horizontal_line,fill_virtual_pixel(vp_width,vp_height,rgb)))
                 else:
-                    horizontal_line=fill_virtual_pixel(context,pixel_id)
+                    horizontal_line=fill_virtual_pixel(vp_width,vp_height,rgb)
 
 
             if type(frame) != str:
