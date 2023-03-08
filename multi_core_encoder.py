@@ -6,57 +6,61 @@ from datetime import datetime
 import os
 import time as time
 import multiprocessing as mp
+from app_extension import fill_virtual_pixel as fill_virtual_pixel_cython
 
 
 ### Parallel Defs #####################################################################################################
 
-def fill_virtual_pixel(context,pixel_id):
-    rgb=context.pixels[pixel_id]
-    img=np.empty([context.virtual_pixel_size[0],context.virtual_pixel_size[1],3],dtype=np.int8)
-    img[:,:,0] = np.full([context.virtual_pixel_size[0],context.virtual_pixel_size[1]],rgb[0])
-    img[:,:,1] = np.full([context.virtual_pixel_size[0],context.virtual_pixel_size[1]],rgb[1])
-    img[:,:,2] = np.full([context.virtual_pixel_size[0],context.virtual_pixel_size[1]],rgb[2])
+def fill_virtual_pixel_python(vp_width,vp_height,r,g,b):
+    
+    img=np.empty([vp_width,vp_height,3],dtype=np.int8)
+    img[:,:,0] = np.full((vp_width,vp_height),r)
+    img[:,:,1] = np.full((vp_width,vp_height),g)
+    img[:,:,2] = np.full((vp_width,vp_height),b)
     return img
 
 
 def craft_frame(context,frame_number,mp_var):
     #print("started crafting frame No",frame_number )
-    try:
-        
-        
-        row_size=int(context.x/context.virtual_pixel_size[0])
-        frame="empty"
-        for row in range(int(context.y/context.virtual_pixel_size[1])):
-            horizontal_line="empty"
-            for column in range(int(context.x/context.virtual_pixel_size[0])):
-                pixel_id=row*row_size+column
-                if type(horizontal_line)!=str:
-                    horizontal_line=np.hstack((horizontal_line,fill_virtual_pixel(context,pixel_id)))
-                else:
-                    horizontal_line=fill_virtual_pixel(context,pixel_id)
 
-
-            if type(frame) != str:
-                frame=np.vstack((frame,horizontal_line))
+    row_size=int(context.x/context.virtual_pixel_size[0])
+    frame="empty"
+    for row in range(int(context.y/context.virtual_pixel_size[1])):
+        horizontal_line="empty"
+        for column in range(int(context.x/context.virtual_pixel_size[0])):
+            pixel_id=row*row_size+column
+            r,g,b=context.pixels[pixel_id]
+            vp_width,vp_height=context.virtual_pixel_size
+            if type(horizontal_line)!=str:
+                horizontal_line=np.hstack((horizontal_line,fill_virtual_pixel_cython(vp_width,vp_height,r,g,b)))
+                
             else:
-                frame=np.copy(horizontal_line)
-        #cv2.imshow("image", frame)
-        #cv2.waitKey()
-        #print("writting")
-        #cv2.imwrite(context.dirname+"temp/"+str(frame_number)+".png", frame)
-        #print(cv2.imread(context.dirname+"temp/"+str(frame_number)+".png"))
-        
-        var = np.reshape( np.frombuffer( mp_var, dtype=np.int8 ), (context.y,context.x,3) )
-        np.copyto(var, frame, casting='same_kind') #IMPORTANT! YOU NEED COPY_TO SO THE VAR POINTER DOESNT CHANGE SO THE PARENT CAN STILL HAVE ACCESS (DONT USE NP.COPY())
-        #print(var)
-        #print(var)
-        #print(type(var),type(frame))
-        #print(var)
-        #print("finished crafting frame No",frame_number )
-        #context.video.write(cv2.imread(context.dirname+str(frame_number)+".png"))
-        #os.remove(context.dirname+str(frame_number)+".png")
-    except Exception as e:
-        print(e)
+                horizontal_line=fill_virtual_pixel_cython(vp_width,vp_height,r,g,b)
+                #print(horizontal_line)
+
+
+        if type(frame) != str:
+            frame=np.vstack((frame,horizontal_line))
+        else:
+            frame=np.copy(horizontal_line)
+    #cv2.imshow("image", frame)
+    #cv2.waitKey()
+    #print("writting")
+    #cv2.imwrite(context.dirname+"temp/"+str(frame_number)+".png", frame)
+    #print(cv2.imread(context.dirname+"temp/"+str(frame_number)+".png"))
+    
+    
+    var = np.reshape( np.frombuffer( mp_var, dtype=np.int8 ), (context.y,context.x,3) )
+    
+    np.copyto(var, frame, casting='same_kind') #IMPORTANT! YOU NEED COPY_TO SO THE VAR POINTER DOESNT CHANGE SO THE PARENT CAN STILL HAVE ACCESS (DONT USE NP.COPY())
+    #print(var)
+    #print(var)
+    #print(type(var),type(frame))
+    #print(var)
+    #print("finished crafting frame No",frame_number )
+    #context.video.write(cv2.imread(context.dirname+str(frame_number)+".png"))
+    #os.remove(context.dirname+str(frame_number)+".png")
+
 
 
 
@@ -227,6 +231,7 @@ class Result():
 
             p=Process(target=craft_frame,args=arguements)
             p.start()
+     
             #p.join()
             #print(mp_var)
             #exit()
@@ -287,7 +292,7 @@ def main(input_file):
 
     t2=time.time()
     print("finished after "+str(t2-t1)+ " seconds")
-    print("median speed:"+str(int(initial_size/(t2-t1)))+ " bytes/second")
+    print("median speed:"+str(int(initial_size/(t2-t1)))+ " Bytes/second")
 
 
 
