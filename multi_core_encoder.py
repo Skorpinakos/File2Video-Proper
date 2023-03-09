@@ -32,10 +32,10 @@ def craft_frame(context,frame_number,mp_var):
             r,g,b=context.pixels[pixel_id]
             vp_width,vp_height=context.virtual_pixel_size
             if type(horizontal_line)!=str:
-                horizontal_line=np.hstack((horizontal_line,fill_virtual_pixel_cython(vp_width,vp_height,r,g,b)))
+                horizontal_line=np.hstack((horizontal_line,fill_virtual_pixel_python(vp_width,vp_height,r,g,b)))
                 
             else:
-                horizontal_line=fill_virtual_pixel_cython(vp_width,vp_height,r,g,b)
+                horizontal_line=fill_virtual_pixel_python(vp_width,vp_height,r,g,b)
                 #print(horizontal_line)
 
 
