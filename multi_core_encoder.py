@@ -6,12 +6,12 @@ from datetime import datetime
 import os
 import time as time
 import multiprocessing as mp
-#from app_extension import fill_virtual_pixel as fill_virtual_pixel_cython
+from app_extension import cython_sub_frame_crafter as cython_sub_frame_crafter
 
 
 
 def to_be_cythonized_sub_frame_crafter(var,row_size,x,y,pixels,vp_width,vp_height):
-    
+#all integers will be treadted as unsigned short integers in cython implementation, be carefull for bigger resolutions than 5k
 
     for row in range(int(y/vp_height)):
         
@@ -38,7 +38,7 @@ def craft_frame(context,frame_number,mp_var):
     
     row_size=int(context.x/context.virtual_pixel_size[0])
     var = np.reshape( np.frombuffer( mp_var, dtype=np.int8 ), (context.y,context.x,3) )
-    to_be_cythonized_sub_frame_crafter(var,row_size,context.x,context.y,np.array(context.pixels,dtype=np.int8),context.virtual_pixel_size[0],context.virtual_pixel_size[1])
+    cython_sub_frame_crafter(var,row_size,context.x,context.y,np.array(context.pixels,dtype=np.int8),context.virtual_pixel_size[0],context.virtual_pixel_size[1])
     
     #np.copyto(var, frame, casting='same_kind') #IMPORTANT! YOU NEED COPY_TO SO THE VAR POINTER DOESNT CHANGE SO THE PARENT CAN STILL HAVE ACCESS (DONT USE NP.COPY())
     #print(var)
@@ -54,7 +54,7 @@ def craft_frame(context,frame_number,mp_var):
 
 class Context(): #a packing class to pass context to parallel funcs
     def __init__(self,pixels,x,y,vp_width,vp_height,dirname):
-        self.pixels=pixels.copy()
+        self.pixels=pixels
         self.x=x
         self.y=y
         self.virtual_pixel_size=[vp_width,vp_height]
@@ -75,7 +75,7 @@ class Result():
         self.x=x
         self.y=y
         
-        self.virtual_pixels=[]
+
         self.frames=0
         
         self.virtual_pixel_size=[12,12] #[x,y] this is the smallest virtual pixel size that survives video compression and is also a divider of most working video resolutions (no per-frame padding)
@@ -94,6 +94,8 @@ class Result():
         self.transcoded_frame_count=0
         self.batch_size=batch_size
         self.bits_per_virtual_pixel=6 ### that "6" is fundamental to the current architecture as it represents how many bits are encoded per virtual pixel (2 per color channel so 4 levels of intensity per color [0,85,170,255])
+        self.virtual_pixels=np.empty((self.virtual_pixels_per_frame,3),dtype=np.int8)
+       
   
     
     def context_giver(self):
@@ -134,16 +136,20 @@ class Result():
         color=f'{num:b}'.zfill(6)
         rgb=[int(color[0:2],2)*self.color_quantum,int(color[2:4],2)*self.color_quantum,int(color[4:6],2)*self.color_quantum]
         #print(rgb)
-        self.virtual_pixels.append(rgb)
+        self.virtual_pixels[self.current_virtual_pixel]=rgb
+        #print(self.current_virtual_pixel)
         self.current_virtual_pixel+=1
         self.frames+=1
     
 
     def finalize(self):
         ### ending padding for final frame
-        if len(self.virtual_pixels)==0:
-            return
-        to_pad=self.virtual_pixels_per_frame-len(self.virtual_pixels)
+        if self.current_virtual_pixel==0:
+            print("what a coincidence, the size of this file bugs out my code, maybe?")
+        else:
+            pass
+        to_pad=self.virtual_pixels_per_frame-(self.current_virtual_pixel)
+        #print(to_pad)
         for v_pixel in range(to_pad):
             self.create_virtual_pixel("000000")  ### add dummy pixels to fill last frame
         ######
@@ -187,8 +193,9 @@ class Result():
     def add_virtual_pixel(self,rgb):
         #print(rgb)
         
-        self.virtual_pixels.append(rgb)
+        self.virtual_pixels[self.current_virtual_pixel]=rgb
         self.current_virtual_pixel+=1
+        #print(self.current_virtual_pixel)
         if self.current_virtual_pixel==self.virtual_pixels_per_frame:
             #print()
             #print(self.frames,len(self.shared_vars))
@@ -232,7 +239,7 @@ class Result():
 
             self.current_virtual_pixel=0
             #self.craft_frame(self.frames,pixels) #using https://docs.python.org/3/library/multiprocessing.html for windows
-            self.virtual_pixels=[]
+            #self.virtual_pixels=[]
 
             #THIS IS FUCKING COOL https://stackoverflow.com/questions/59070175/pass-arguments-through-self-in-class-instance-while-multiprocessing-in-python 
 
@@ -265,7 +272,7 @@ def main(input_file):
     initial_size=os.stat(input_file).st_size
     initial_padding=chunk_size-(initial_size % chunk_size)
 
-    final_video=Result(3840,2160,6,initial_padding,initial_size,12,chunk_size*8) #anything bellow 6 fps is turned to 6 by youtube
+    final_video=Result(3840,2160,6,initial_padding,initial_size,4,chunk_size*8) #anything bellow 6 fps is turned to 6 by youtube
     #args are x dimension of final video | y dimension of final video | fps of final video | file padding so it is multiple of batch_size (byte_size*chunk_size e.g. 8*3)|original file size | thread count to spawn
 
     t1=time.time()
@@ -284,7 +291,7 @@ def main(input_file):
 
 
 
-input_file="tests/test_input.zip"
+input_file="tests/test_input_big.zip"
 if __name__ == '__main__': #in the god you believe in https://stackoverflow.com/questions/18204782/runtimeerror-on-windows-trying-python-multiprocessing
     main(input_file)
     
