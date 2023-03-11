@@ -6,18 +6,9 @@ from datetime import datetime
 import os
 import time as time
 import multiprocessing as mp
-from app_extension import fill_virtual_pixel as fill_virtual_pixel_cython
+#from app_extension import fill_virtual_pixel as fill_virtual_pixel_cython
 
 
-### Parallel Defs #####################################################################################################
-
-def fill_virtual_pixel_python(vp_width,vp_height,r,g,b):
-    
-    img=np.empty([vp_width,vp_height,3],dtype=np.int8)
-    img[:,:,0] = np.full((vp_width,vp_height),r)
-    img[:,:,1] = np.full((vp_width,vp_height),g)
-    img[:,:,2] = np.full((vp_width,vp_height),b)
-    return img
 
 def to_be_cythonized_sub_frame_crafter(var,row_size,x,y,pixels,vp_width,vp_height):
     
@@ -26,14 +17,9 @@ def to_be_cythonized_sub_frame_crafter(var,row_size,x,y,pixels,vp_width,vp_heigh
         
         for column in range(int(x/vp_width)):
             pixel_id=row*row_size+column
-            r,g,b=pixels[pixel_id]
-            vp=fill_virtual_pixel_cython(vp_width,vp_height,r,g,b)
             start_x=column*vp_width
             start_y=row*vp_height
-            end_x=start_x+vp_width
-            end_y=start_y+vp_height
-            #print(start_y,end_y,start_x,end_x)
-            var[start_y:end_y,start_x:end_x]=vp
+            var[  start_y:start_y+vp_height  ,  start_x:start_x+vp_width  ]=pixels[pixel_id]
             
 
 
