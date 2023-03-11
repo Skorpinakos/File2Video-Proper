@@ -291,7 +291,7 @@ def main(input_file):
 
 
 
-input_file="tests/test_input_big.zip"
+input_file="tests/test_input.zip"
 if __name__ == '__main__': #in the god you believe in https://stackoverflow.com/questions/18204782/runtimeerror-on-windows-trying-python-multiprocessing
     main(input_file)
     
