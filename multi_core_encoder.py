@@ -19,30 +19,31 @@ def fill_virtual_pixel_python(vp_width,vp_height,r,g,b):
     img[:,:,2] = np.full((vp_width,vp_height),b)
     return img
 
+def to_be_cythonized_sub_frame_crafter(row_size,x,y,pixels,vp_width,vp_height):
+    frame=np.empty((y,x,3),dtype=np.int8)
+
+    for row in range(int(y/vp_height)):
+        
+        for column in range(int(x/vp_width)):
+            pixel_id=row*row_size+column
+            r,g,b=pixels[pixel_id]
+            vp=fill_virtual_pixel_python(vp_width,vp_height,r,g,b)
+            start_x=column*vp_width
+            start_y=row*vp_height
+            end_x=start_x+vp_width
+            end_y=start_y+vp_height
+            #print(start_y,end_y,start_x,end_x)
+            frame[start_y:end_y,start_x:end_x]=vp
+            
+
+
+    return frame
 
 def craft_frame(context,frame_number,mp_var):
     #print("started crafting frame No",frame_number )
 
     row_size=int(context.x/context.virtual_pixel_size[0])
-    frame="empty"
-    for row in range(int(context.y/context.virtual_pixel_size[1])):
-        horizontal_line="empty"
-        for column in range(int(context.x/context.virtual_pixel_size[0])):
-            pixel_id=row*row_size+column
-            r,g,b=context.pixels[pixel_id]
-            vp_width,vp_height=context.virtual_pixel_size
-            if type(horizontal_line)!=str:
-                horizontal_line=np.hstack((horizontal_line,fill_virtual_pixel_python(vp_width,vp_height,r,g,b)))
-                
-            else:
-                horizontal_line=fill_virtual_pixel_python(vp_width,vp_height,r,g,b)
-                #print(horizontal_line)
-
-
-        if type(frame) != str:
-            frame=np.vstack((frame,horizontal_line))
-        else:
-            frame=np.copy(horizontal_line)
+    frame=to_be_cythonized_sub_frame_crafter(row_size,context.x,context.y,np.array(context.pixels,dtype=np.int8),context.virtual_pixel_size[0],context.virtual_pixel_size[1])
     #cv2.imshow("image", frame)
     #cv2.waitKey()
     #print("writting")
