@@ -14,17 +14,19 @@ def to_be_cythonized_sub_frame_crafter(var,row_size,x,y,pixels,vp_width,vp_heigh
 #all integers will be treadted as unsigned short integers in cython implementation, be carefull for bigger resolutions than 5k
     #print(pixels)
 
-    ### 
-    
+    ### new approach, reshape pixels into mini frame and rescale with cv2
+    #pixels=np.reshape(pixels,((y//vp_height),(x//vp_width),3)) #this is actually kinda in place , don't worry about performance https://stackoverflow.com/questions/46574568/does-numpy-reshape-create-a-copy
+    #frame = cv2.resize(pixels, (x,y), interpolation= cv2.INTER_NEAREST) 
+    #np.copyto(var,frame,casting='same_kind')
+    #return 
+    ### it didn't give any performance improvement
 
-
-    for row in range(int(y/vp_height)):
+    pixel_id=0
+    for row in range(0,y,vp_height):
+        for column in range(0,x,vp_width):
+            var[  row:row+vp_height  ,  column:column+vp_width  ]=pixels[pixel_id]
+            pixel_id+=1
         
-        for column in range(int(x/vp_width)):
-            pixel_id=row*row_size+column
-            start_x=column*vp_width
-            start_y=row*vp_height
-            var[  start_y:start_y+vp_height  ,  start_x:start_x+vp_width  ]=pixels[pixel_id]
             
 
 
@@ -59,7 +61,7 @@ def craft_frame(context,frame_number,mp_var):
 
 class Context(): #a packing class to pass context to parallel funcs
     def __init__(self,pixels,x,y,vp_width,vp_height,dirname):
-        print(pixels)
+        #print(pixels)
         self.pixels=pixels
         self.x=x
         self.y=y
@@ -280,7 +282,7 @@ def main(input_file):
     initial_size=os.stat(input_file).st_size
     initial_padding=chunk_size-(initial_size % chunk_size)
 
-    final_video=Result(3840,2160,6,initial_padding,initial_size,4,chunk_size*8) #anything bellow 6 fps is turned to 6 by youtube
+    final_video=Result(3840,2160,5,initial_padding,initial_size,5,chunk_size*8) #anything bellow 6 fps is turned to 6 by youtube
     #args are x dimension of final video | y dimension of final video | fps of final video | file padding so it is multiple of batch_size (byte_size*chunk_size e.g. 8*3)|original file size | thread count to spawn
 
     t1=time.time()
@@ -299,7 +301,7 @@ def main(input_file):
 
 
 
-input_file="tests/test_input_big.zip"
+input_file="tests/test_input.zip"
 if __name__ == '__main__': #in the god you believe in https://stackoverflow.com/questions/18204782/runtimeerror-on-windows-trying-python-multiprocessing
     main(input_file)
     
