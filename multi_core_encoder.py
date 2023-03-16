@@ -12,14 +12,21 @@ from app_extension import cython_sub_frame_crafter as cython_sub_frame_crafter
 
 def to_be_cythonized_sub_frame_crafter(var,row_size,x,y,pixels,vp_width,vp_height):
 #all integers will be treadted as unsigned short integers in cython implementation, be carefull for bigger resolutions than 5k
+    #print(pixels)
 
-    for row in range(int(y/vp_height)):
+    ### new approach, reshape pixels into mini frame and rescale with cv2
+    #pixels=np.reshape(pixels,((y//vp_height),(x//vp_width),3)) #this is actually kinda in place , don't worry about performance https://stackoverflow.com/questions/46574568/does-numpy-reshape-create-a-copy
+    #frame = cv2.resize(pixels, (x,y), interpolation= cv2.INTER_NEAREST) 
+    #np.copyto(var,frame,casting='same_kind')
+    #return 
+    ### it didn't give any performance improvement
+
+    pixel_id=0
+    for row in range(0,y,vp_height):
+        for column in range(0,x,vp_width):
+            var[  row:row+vp_height  ,  column:column+vp_width  ]=pixels[pixel_id]
+            pixel_id+=1
         
-        for column in range(int(x/vp_width)):
-            pixel_id=row*row_size+column
-            start_x=column*vp_width
-            start_y=row*vp_height
-            var[  start_y:start_y+vp_height  ,  start_x:start_x+vp_width  ]=pixels[pixel_id]
             
 
 
@@ -37,8 +44,8 @@ def craft_frame(context,frame_number,mp_var):
     #print(cv2.imread(context.dirname+"temp/"+str(frame_number)+".png"))
     
     row_size=int(context.x/context.virtual_pixel_size[0])
-    var = np.reshape( np.frombuffer( mp_var, dtype=np.int8 ), (context.y,context.x,3) )
-    cython_sub_frame_crafter(var,row_size,context.x,context.y,np.array(context.pixels,dtype=np.int8),context.virtual_pixel_size[0],context.virtual_pixel_size[1])
+    var = np.reshape( np.frombuffer( mp_var, dtype=np.uint8 ), (context.y,context.x,3) )
+    to_be_cythonized_sub_frame_crafter(var,row_size,context.x,context.y,np.array(context.pixels,dtype=np.uint8),context.virtual_pixel_size[0],context.virtual_pixel_size[1])
     
     #np.copyto(var, frame, casting='same_kind') #IMPORTANT! YOU NEED COPY_TO SO THE VAR POINTER DOESNT CHANGE SO THE PARENT CAN STILL HAVE ACCESS (DONT USE NP.COPY())
     #print(var)
@@ -54,6 +61,7 @@ def craft_frame(context,frame_number,mp_var):
 
 class Context(): #a packing class to pass context to parallel funcs
     def __init__(self,pixels,x,y,vp_width,vp_height,dirname):
+        #print(pixels)
         self.pixels=pixels
         self.x=x
         self.y=y
@@ -94,11 +102,12 @@ class Result():
         self.transcoded_frame_count=0
         self.batch_size=batch_size
         self.bits_per_virtual_pixel=6 ### that "6" is fundamental to the current architecture as it represents how many bits are encoded per virtual pixel (2 per color channel so 4 levels of intensity per color [0,85,170,255])
-        self.virtual_pixels=np.empty((self.virtual_pixels_per_frame,3),dtype=np.int8)
+        self.virtual_pixels=np.empty((self.virtual_pixels_per_frame,3),dtype=np.uint8)
        
   
     
     def context_giver(self):
+        print(self.virtual_pixels)
         return Context(self.virtual_pixels,self.x,self.y,self.virtual_pixel_size[0],self.virtual_pixel_size[1],self.dirname)
     def packet_to_str(self,packet):
         return f'{packet:b}'.zfill(8)
@@ -187,18 +196,19 @@ class Result():
     def context_giver(self):
         return Context(self.virtual_pixels,self.x,self.y,self.virtual_pixel_size[0],self.virtual_pixel_size[1],self.dirname)
     def retrieve_frame(self,shared_frame):
-        var = np.reshape( np.frombuffer( shared_frame, dtype=np.int8 ), (self.y,self.x,3) )
+        var = np.reshape( np.frombuffer( shared_frame, dtype=np.uint8 ), (self.y,self.x,3) )
         return var
 
     def add_virtual_pixel(self,rgb):
         #print(rgb)
         
         self.virtual_pixels[self.current_virtual_pixel]=rgb
+        
         self.current_virtual_pixel+=1
         #print(self.current_virtual_pixel)
         if self.current_virtual_pixel==self.virtual_pixels_per_frame:
             #print()
-            #print(self.frames,len(self.shared_vars))
+           
             context=self.context_giver() 
             frame_number=self.frames
 
@@ -272,7 +282,7 @@ def main(input_file):
     initial_size=os.stat(input_file).st_size
     initial_padding=chunk_size-(initial_size % chunk_size)
 
-    final_video=Result(3840,2160,6,initial_padding,initial_size,4,chunk_size*8) #anything bellow 6 fps is turned to 6 by youtube
+    final_video=Result(3840,2160,5,initial_padding,initial_size,5,chunk_size*8) #anything bellow 6 fps is turned to 6 by youtube
     #args are x dimension of final video | y dimension of final video | fps of final video | file padding so it is multiple of batch_size (byte_size*chunk_size e.g. 8*3)|original file size | thread count to spawn
 
     t1=time.time()
