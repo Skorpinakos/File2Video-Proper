@@ -6,13 +6,13 @@ Example of Resulting Video ^^ (for older 16x16 Virtual Pixels and 720p resolutio
 
 
 
-An open source efficient file-2-video encoder (&decoder). 
+**An open source efficient file-2-video encoder (&decoder).** 
 
-The implementation allows the user to transform .zip files to .avi video format in a compression resistant encoding. The produced video can be uploaded to video streaming platforms with unlimited-upload policies (e.g. YouTube) and used as a free cloud storage method.
+*The implementation allows the user to transform .zip files to .avi video format in a compression resistant encoding. The produced video can be uploaded to video streaming platforms with unlimited-upload policies (e.g. YouTube) and used as a free cloud storage method.
 
-Each group of 3 Bytes from the .zip file translates to 4 virtual pixels (square patches of a video frame) each encoding 6 Bits (2 bits per RGB color channel). With sufficient virtual pixel size (12x12 was tested as zero transmission error) resistance to video compression is achieved. The python implementation is using multiple performance optimizations to support multiprocessing and alleviate interpreter overhead. Some versions implement performance critical functionality in Cython. 
+*Each group of 3 Bytes from the .zip file translates to 4 virtual pixels (square patches of a video frame) each encoding 6 Bits (2 bits per RGB color channel). With sufficient virtual pixel size (12x12 was tested as zero transmission error) resistance to video compression is achieved. The python implementation is using multiple performance optimizations to support multiprocessing and alleviate interpreter overhead. Some versions implement performance critical functionality in Cython. 
 
-Final encoding speed for a 3rd Ryzen Generation 6-core CPU was 120KB/s (~20 times faster from original version) with minimal memory/disk use and resulting encoding size ratio came to 1/10 (after .webm transcoding).
+*Final encoding speed for a 3rd Ryzen Generation 6-core CPU was 120KB/s (~20 times faster from original version) with minimal memory/disk use and resulting encoding size ratio came to 1/10 (after .webm transcoding).
 
 
 
