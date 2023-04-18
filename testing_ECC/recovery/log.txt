@@ -1,0 +1,25 @@
+Initializing the ECC codecs, please wait...
+Precomputing list of files and predicted statistics...
+0it [00:00, ?it/s]
+
+1it [00:00, 1001.51it/s]
+
+
+Precomputing done.
+Total ECC size estimation: 4.4MB = 46.4336% of total files size 9.4MB.
+Details per stage:
+- Resiliency stage1 of 30%: For the header (first 1024 characters) of each file: each block of 159 chars will get an ecc of 96 chars (48 errors or 96 erasures).
+- Resiliency stage2 of 20%: for the rest of the file, the parameters will start with: each block of 182 chars will get an ecc of 73 chars (36 errors or 73 erasures).
+- Resiliency stage3 of 10%: progressively towards the end, the parameters will gradually become: each block of 212 chars will get an ecc of 43 chars (21 errors or 43 erasures).
+Note: current max_block_size (size of message+ecc blocks) is 255. Consider using a smaller value to greatly speedup the processing (because Reed-Solomon encoding complexity is about O(max_block_size^2)) at the expense of generating a bigger ecc file and less burst error resiliency (because the ecc blocks will be smaller).
+====================================
+Structural adaptive ECC generation, started on 2023-04-18T22:12:00.670058
+====================================
+  0%|          | 0.00/9.88M [00:00<?, ?B/s]
+
+- Processing file test_input_big.zip
+
+100%|##########| 9.88M/9.88M [00:00<00:00, 13.4MB/s]
+
+
+All done! Total number of files processed: 1, skipped: 0
