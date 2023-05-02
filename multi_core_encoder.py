@@ -6,9 +6,6 @@ from datetime import datetime
 import os
 import time as time
 import multiprocessing as mp
-from app_extension import cython_sub_frame_crafter as cython_sub_frame_crafter
-
-
 
 def to_be_cythonized_sub_frame_crafter(var,row_size,x,y,pixels,vp_width,vp_height):
 #all integers will be treadted as unsigned short integers in cython implementation, be carefull for bigger resolutions than 5k
